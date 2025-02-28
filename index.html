@@ -31,11 +31,11 @@
           <h2 class="text-xl font-bold">Yacine TV</h2>
           <i class="fas fa-search text-2xl"></i>
         </div>
-        <!-- هنا ستضاف أزرار القنوات بشكل ديناميكي -->
+        <!-- هنا ستُضاف أزرار القنوات بشكل ديناميكي -->
         <div id="menuContainer" class="space-y-4"></div>
       </div>
     </div>
-    <!-- Channels Section (مثال لقنوات عربية ثابتة) -->
+    <!-- Channels Section -->
     <div class="w-full px-4 mt-4">
       <div class="bg-red-600 p-4 rounded-lg shadow-lg">
         <div class="flex justify-between items-center mb-4">
@@ -56,7 +56,42 @@
             <img alt="Flag of Tunisia" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/JSayvFqfJjS9tgesnsHUWzLPRThIn-IgkthvBlKv8YY.jpg" width="100"/>
             <p class="text-red-700 font-bold">TUNISIA</p>
           </div>
-          <!-- باقي القنوات -->
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Libya" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/HBije4T7_-FSvme8KwpLZXu__JifIt2ngxE8j_4R0Mc.jpg" width="100"/>
+            <p class="text-red-700 font-bold">LIBYA</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Egypt" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/frDdOuCDIXutoge_dx8_n3bHgmAmSn31rXHyk8OJtDE.jpg" width="100"/>
+            <p class="text-red-700 font-bold">EGYPT</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Saudi Arabia" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/Bp05TYJAUr90Jj8mqjdZ_kq2O6PN-6QD-LSiTscH5YE.jpg" width="100"/>
+            <p class="text-red-700 font-bold">SAUDI ARABIA</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of UAE" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/5NAXpXzCwmZyfV-8E1gTrE4sOkqZnFNJGeWpYZQxIOM.jpg" width="100"/>
+            <p class="text-red-700 font-bold">UEA</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Palestine" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/8ro1N5bLn5j8VZePfzlMr7dFehcWkU1J_t36U2qx1pc.jpg" width="100"/>
+            <p class="text-red-700 font-bold">PALESTINE</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Jordan" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/YpEOauKfLZ26_nhaStIQCqNptiRvxgLwdyANLUQM-l8.jpg" width="100"/>
+            <p class="text-red-700 font-bold">JORDAN</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Lebanon" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/4TVSRjxS5d8U4J5HMRnbhYICFbdYuuiC1Rm1o6KlFHY.jpg" width="100"/>
+            <p class="text-red-700 font-bold">LEBANON</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Syria" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/A4qXkaOCU1mvhPVSna7MvoechkALaWLPMJR4VitZZik.jpg" width="100"/>
+            <p class="text-red-700 font-bold">SYRIA</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg text-center">
+            <img alt="Flag of Iraq" class="mx-auto mb-2" height="100" src="https://storage.googleapis.com/a1aa/image/nRt1bhbn2jEnsZlhFFzpF0kynwXaN1Och7G2u9R9vi0.jpg" width="100"/>
+            <p class="text-red-700 font-bold">IRAQ</p>
+          </div>
         </div>
       </div>
     </div>
@@ -94,42 +129,36 @@
       document.getElementById('videoPlayer').pause();
     }
 
-    // جلب البيانات من الرابط وتوليد الأزرار بناءً على الشكل:
-    // {
-    //   "channel": "ALRAHMA beIN Sport 1 HD",
-    //   "url": "https://tv.kooraiq.com:4433/beIN_sport1/tracks-v1a1/mono.m3u8",
-    //   "http_referrer": null,
-    //   "user_agent": null,
-    //   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/1-HD.png/240px-1-HD.png"
-    // }
+    // جلب بيانات القنوات من الملف وتوليد الأزرار
     fetch("https://raw.githubusercontent.com/ghaith-99/ghaith-99/refs/heads/main/mytv.json")
-      .then(response => response.json())
-      .then(data => {
+      .then(response => response.text())
+      .then(text => {
+        // ابحث عن بداية مصفوفة القنوات
+        const jsonStart = text.indexOf('[');
+        if (jsonStart === -1) {
+          throw new Error("لم يتم العثور على بداية المصفوفة");
+        }
+        let jsonString = text.substring(jsonStart);
+        // إزالة التعليقات (أي محتوى بين /* و */)
+        jsonString = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
+        // تحويل النص إلى كائن JSON
+        const data = JSON.parse(jsonString);
+        console.log(data);
+        
+        // توليد أزرار القنوات بناءً على البيانات
         const menuContainer = document.getElementById('menuContainer');
-        // في حالة كانت البيانات عبارة عن مصفوفة من الكائنات
-        if(Array.isArray(data)) {
-          data.forEach(item => {
-            const btn = document.createElement('button');
-            btn.className = "w-full bg-white text-red-700 font-bold py-2 rounded-lg";
-            btn.innerText = item.channel;
-            btn.onclick = () => {
-              openVideoPlayer(item.channel, item.url, item.logo);
-            };
-            menuContainer.appendChild(btn);
-          });
-        } else {
-          // إذا كانت البيانات كائن واحد فقط
+        data.forEach(item => {
           const btn = document.createElement('button');
           btn.className = "w-full bg-white text-red-700 font-bold py-2 rounded-lg";
-          btn.innerText = data.channel;
+          btn.innerText = item.channel;
           btn.onclick = () => {
-            openVideoPlayer(data.channel, data.url, data.logo);
+            openVideoPlayer(item.channel, item.url, item.logo);
           };
           menuContainer.appendChild(btn);
-        }
+        });
       })
       .catch(error => {
-        console.error("Error fetching channel data:", error);
+        console.error("خطأ في جلب بيانات القنوات:", error);
       });
   </script>
 </body>
