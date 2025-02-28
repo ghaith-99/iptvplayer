@@ -3,25 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>قنوات غيث</title>
+  <title>قنوات غيث TV</title>
   <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .vjs-fluid { padding-top: 56.25% !important; }
-    .loading-spinner {
-      display: none;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-  </style>
 </head>
 <body class="bg-gray-900 min-h-screen text-white">
   <div class="container mx-auto px-4 py-8">
     <!-- Header -->
     <header class="text-center mb-12">
-      <h1 class="text-4xl font-bold mb-2">قنوات غيث</h1>
+      <h1 class="text-4xl font-bold mb-2">قنوات غيث TV</h1>
       <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"></div>
     </header>
 
@@ -37,81 +27,61 @@
       </div>
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="w-full max-w-6xl px-4">
-          <video 
-            id="videoPlayer"
-            class="video-js vjs-fluid vjs-big-play-centered"
-            controls
-            preload="auto"
-          ></video>
-          <div class="loading-spinner" id="loadingSpinner">
-            <svg class="animate-spin h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
+          <video id="videoPlayer" class="video-js vjs-fluid" controls preload="auto"></video>
         </div>
       </div>
     </div>
   </div>
 
   <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/dist/hls.min.js"></script>
   <script>
     let player = null;
-    let hls = null;
-
-    // إعدادات CORS البديلة
     const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
     const CHANNELS_URL = 'https://raw.githubusercontent.com/ghaith-99/ghaith-99/main/mytv.json';
 
+    // دالة تنظيف JSON
+    function cleanJSON(jsonString) {
+      return jsonString
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // إزالة أحرف التحكم
+        .replace(/\r?\n|\r/g, ' ') // استبدال الأسطر الجديدة بمسافات
+        .replace(/،/g, ',') // استبدال الفواصل العربية
+        .replace(/(\w)'(\w)/g, '$1"$2') // إصلاح التنصيص المفرد
+        .replace(/'/g, '"') // تحويل كل التنصيص المفرد إلى مزدوج
+        .replace(/,(\s*})/g, '$1'); // إزالة الفواصل الزائدة
+    }
+
     async function loadChannels() {
-      const container = document.getElementById('channelList');
-      const errorEl = document.getElementById('errorMessage');
-
       try {
-        container.innerHTML = '<div class="text-center">جاري التحميل...</div>';
-        
         const response = await fetch(CORS_PROXY + encodeURIComponent(CHANNELS_URL));
+        if (!response.ok) throw new Error('فشل الاتصال بالخادم');
         
-        if (!response.ok) throw new Error('فشل في جلب البيانات');
-        
-        const textData = await response.text();
-        
-        // تنظيف JSON من التعليقات
-        const cleanJSON = textData
-          .replace(/\/\*[\s\S]*?\*\//g, '')
-          .replace(/\/\/.*/g, '')
-          .replace(/،\s*}/g, '}')
-          .replace(/،\s*\]/g, ']');
+        const dirtyData = await response.text();
+        const cleanData = cleanJSON(dirtyData);
+        const channels = JSON.parse(cleanData);
 
-        const data = JSON.parse(cleanJSON);
-
-        container.innerHTML = data.map(channel => `
-          <div class="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition" 
-               onclick="openPlayer('${channel.channel}', '${channel.url}', '${channel.logo}')">
-            <div class="flex items-center">
-              <img src="${channel.logo}" class="w-12 h-12 rounded-full mr-4" alt="${channel.channel}">
-              <div>
-                <h3 class="font-bold">${channel.channel}</h3>
-                <p class="text-gray-400 text-sm">${channel.description || 'قناة مباشرة'}</p>
-              </div>
-            </div>
-          </div>
-        `).join('');
-
+        renderChannels(channels);
       } catch (error) {
-        console.error(error);
-        errorEl.innerHTML = `
-          خطأ في تحميل القنوات: ${error.message}
-          <button onclick="loadChannels()" class="mr-2 px-3 py-1 bg-blue-600 rounded">
-            إعادة المحاولة
-          </button>
-        `;
-        errorEl.classList.remove('hidden');
+        showError(`خطأ في التحميل: ${error.message}`);
       }
     }
 
-    function openPlayer(channel, url, logo) {
+    function renderChannels(channels) {
+      const container = document.getElementById('channelList');
+      container.innerHTML = channels.map(channel => `
+        <div class="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition"
+             onclick="openPlayer('${channel.url}')">
+          <div class="flex items-center">
+            <img src="${channel.logo}" class="w-12 h-12 rounded-full mr-4" alt="${channel.channel}">
+            <div>
+              <h3 class="font-bold">${channel.channel}</h3>
+              <p class="text-gray-400 text-sm">${channel.url}</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openPlayer(streamUrl) {
       document.getElementById('playerContainer').classList.remove('hidden');
       
       if (player) player.dispose();
@@ -121,14 +91,14 @@
         controls: true,
         autoplay: true,
         sources: [{
-          src: url,
+          src: streamUrl,
           type: 'application/x-mpegURL'
         }]
       });
 
       player.on('error', () => {
-        showError('حدث خطأ أثناء التشغيل، جاري إعادة المحاولة...');
-        setTimeout(() => player.src(url), 3000);
+        showError('تعذر تشغيل البث، جاري إعادة المحاولة...');
+        setTimeout(() => player.src({ src: streamUrl, type: 'application/x-mpegURL' }), 3000);
       });
     }
 
@@ -137,11 +107,13 @@
       if (player) player.dispose();
     }
 
-    function showError(msg) {
+    function showError(message) {
       const errorEl = document.getElementById('errorMessage');
-      errorEl.innerHTML = msg;
+      errorEl.innerHTML = `${message} 
+        <button onclick="loadChannels()" class="mr-2 px-3 py-1 bg-blue-600 rounded">
+          إعادة المحاولة
+        </button>`;
       errorEl.classList.remove('hidden');
-      setTimeout(() => errorEl.classList.add('hidden'), 5000);
     }
 
     // بدء التحميل عند فتح الصفحة
