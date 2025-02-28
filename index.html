@@ -1,22 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ghaith TV - HLS Streaming</title>
-  
-  <!-- Styles -->
+  <title>قنوات غيث</title>
   <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Scripts -->
-  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/dist/hls.min.js"></script>
-  
   <style>
-    .vjs-fluid {
-      padding-top: 56.25% !important;
-    }
+    .vjs-fluid { padding-top: 56.25% !important; }
     .loading-spinner {
       display: none;
       position: absolute;
@@ -27,12 +18,11 @@
   </style>
 </head>
 <body class="bg-gray-900 min-h-screen text-white">
-  <!-- Main Container -->
   <div class="container mx-auto px-4 py-8">
     <!-- Header -->
     <header class="text-center mb-12">
-      <h1 class="text-4xl font-bold mb-2">Ghaith TV</h1>
-      <p class="text-gray-400">Live Streaming Platform</p>
+      <h1 class="text-4xl font-bold mb-2">قنوات غيث</h1>
+      <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"></div>
     </header>
 
     <!-- Channel List -->
@@ -40,12 +30,11 @@
 
     <!-- Video Player -->
     <div id="playerContainer" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50">
-      <div class="absolute top-4 right-4 z-50">
+      <div class="absolute top-4 left-4 z-50">
         <button onclick="closePlayer()" class="text-white text-2xl bg-red-600 px-3 py-1 rounded-full">
           &times;
         </button>
       </div>
-      
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="w-full max-w-6xl px-4">
           <video 
@@ -54,8 +43,6 @@
             controls
             preload="auto"
           ></video>
-          
-          <!-- Loading Spinner -->
           <div class="loading-spinner" id="loadingSpinner">
             <svg class="animate-spin h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -67,166 +54,98 @@
     </div>
   </div>
 
+  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/dist/hls.min.js"></script>
   <script>
     let player = null;
     let hls = null;
 
-    // Initialize player
-    function initPlayer(url) {
-      if (player) {
-        player.dispose();
-      }
+    // إعدادات CORS البديلة
+    const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+    const CHANNELS_URL = 'https://raw.githubusercontent.com/ghaith-99/ghaith-99/main/mytv.json';
 
-      player = videojs('videoPlayer', {
-        techOrder: ['html5', 'hls'],
-        hls: {
-          overrideNative: true,
-          withCredentials: false,
-          enableLowInitialPlaylist: true,
-          smoothQualityChange: true,
-        },
-        controlBar: {
-          pictureInPictureToggle: false
-        },
-        autoplay: true,
-        liveui: true
-      });
-
-      // Error handling
-      player.on('error', () => {
-        const error = player.error();
-        console.error('Player Error:', error);
-        showError(`播放器错误: ${error.message}`);
-      });
-
-      // Loading state
-      player.on('waiting', () => {
-        document.getElementById('loadingSpinner').style.display = 'block';
-      });
-
-      player.on('playing', () => {
-        document.getElementById('loadingSpinner').style.display = 'none';
-      });
-
-      // Initialize HLS
-      if (Hls.isSupported()) {
-        hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          backBufferLength: 60
-        });
-        
-        hls.loadSource(url);
-        hls.attachMedia(player.tech().el());
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log('Manifest parsed successfully');
-        });
-        
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          console.error('HLS Error:', data);
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                showError('网络错误，正在尝试重新连接...');
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
-                break;
-              default:
-                hls.destroy();
-                initPlayer(url);
-                break;
-            }
-          }
-        });
-      } else if (player.tech().el().canPlayType('application/vnd.apple.mpegurl')) {
-        player.src(url);
-      }
-    }
-
-    // Open player with specific channel
-    async function openPlayer(channelName, streamUrl, logoUrl) {
-      try {
-        document.getElementById('playerContainer').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        initPlayer(streamUrl);
-      } catch (error) {
-        console.error('Error opening player:', error);
-        showError('无法播放该频道');
-      }
-    }
-
-    // Close player
-    function closePlayer() {
-      document.getElementById('playerContainer').classList.add('hidden');
-      document.body.style.overflow = 'auto';
-      if (hls) {
-        hls.destroy();
-        hls = null;
-      }
-      if (player) {
-        player.dispose();
-        player = null;
-      }
-    }
-
-    // Error display
-    function showError(message) {
-      const errorEl = document.createElement('div');
-      errorEl.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded fixed bottom-4 right-4';
-      errorEl.innerHTML = `
-        <strong>错误!</strong> ${message}
-        <span class="absolute top-0 right-0 px-2 py-1 cursor-pointer" onclick="this.parentElement.remove()">
-          &times;
-        </span>
-      `;
-      document.body.appendChild(errorEl);
-    }
-
-    // Load channels
     async function loadChannels() {
+      const container = document.getElementById('channelList');
+      const errorEl = document.getElementById('errorMessage');
+
       try {
-        const response = await fetch('https://raw.githubusercontent.com/ghaith-99/ghaith-99/main/mytv.json');
-        const data = await response.json();
+        container.innerHTML = '<div class="text-center">جاري التحميل...</div>';
         
-        const container = document.getElementById('channelList');
-        container.innerHTML = '';
+        const response = await fetch(CORS_PROXY + encodeURIComponent(CHANNELS_URL));
         
-        data.forEach(channel => {
-          const card = document.createElement('div');
-          card.className = 'bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition';
-          card.innerHTML = `
+        if (!response.ok) throw new Error('فشل في جلب البيانات');
+        
+        const textData = await response.text();
+        
+        // تنظيف JSON من التعليقات
+        const cleanJSON = textData
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/\/\/.*/g, '')
+          .replace(/،\s*}/g, '}')
+          .replace(/،\s*\]/g, ']');
+
+        const data = JSON.parse(cleanJSON);
+
+        container.innerHTML = data.map(channel => `
+          <div class="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition" 
+               onclick="openPlayer('${channel.channel}', '${channel.url}', '${channel.logo}')">
             <div class="flex items-center">
-              <img src="${channel.logo}" class="w-12 h-12 rounded-full mr-4" alt="${channel.channel} logo">
+              <img src="${channel.logo}" class="w-12 h-12 rounded-full mr-4" alt="${channel.channel}">
               <div>
                 <h3 class="font-bold">${channel.channel}</h3>
-                <p class="text-gray-400 text-sm">点击观看直播</p>
+                <p class="text-gray-400 text-sm">${channel.description || 'قناة مباشرة'}</p>
               </div>
             </div>
-          `;
-          
-          card.addEventListener('click', () => openPlayer(channel.channel, channel.url, channel.logo));
-          container.appendChild(card);
-        });
+          </div>
+        `).join('');
+
       } catch (error) {
-        console.error('Error loading channels:', error);
-        showError('无法加载频道列表');
+        console.error(error);
+        errorEl.innerHTML = `
+          خطأ في تحميل القنوات: ${error.message}
+          <button onclick="loadChannels()" class="mr-2 px-3 py-1 bg-blue-600 rounded">
+            إعادة المحاولة
+          </button>
+        `;
+        errorEl.classList.remove('hidden');
       }
     }
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      loadChannels();
-    });
+    function openPlayer(channel, url, logo) {
+      document.getElementById('playerContainer').classList.remove('hidden');
+      
+      if (player) player.dispose();
+      
+      player = videojs('videoPlayer', {
+        techOrder: ['html5'],
+        controls: true,
+        autoplay: true,
+        sources: [{
+          src: url,
+          type: 'application/x-mpegURL'
+        }]
+      });
 
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      if (player) {
-        player.dimensions(player.currentWidth(), player.currentHeight());
-      }
-    });
+      player.on('error', () => {
+        showError('حدث خطأ أثناء التشغيل، جاري إعادة المحاولة...');
+        setTimeout(() => player.src(url), 3000);
+      });
+    }
+
+    function closePlayer() {
+      document.getElementById('playerContainer').classList.add('hidden');
+      if (player) player.dispose();
+    }
+
+    function showError(msg) {
+      const errorEl = document.getElementById('errorMessage');
+      errorEl.innerHTML = msg;
+      errorEl.classList.remove('hidden');
+      setTimeout(() => errorEl.classList.add('hidden'), 5000);
+    }
+
+    // بدء التحميل عند فتح الصفحة
+    document.addEventListener('DOMContentLoaded', loadChannels);
   </script>
 </body>
 </html>
