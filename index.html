@@ -7,9 +7,16 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
   <!-- Video.js CSS -->
   <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+  <!-- hls.js -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
+    }
+    /* جعل الفيديو يتكيف مع الحاوية */
+    .video-js {
+      width: 100% !important;
+      height: auto !important;
     }
   </style>
 </head>
@@ -38,7 +45,7 @@
 
   <!-- Video Player Modal -->
   <div id="videoPlayerModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden">
-    <div class="bg-white rounded-lg p-4 w-11/12 md:w-3/4 lg:w-1/2">
+    <div class="bg-white rounded-lg p-4 w-11/12 md:w-3/4 lg:w-2/3 xl:w-1/2">
       <div class="flex justify-between items-center mb-4">
         <h2 id="channelName" class="text-xl font-bold text-gray-900"></h2>
         <button onclick="closeVideoPlayer()" class="text-gray-900 text-2xl">&times;</button>
@@ -46,46 +53,69 @@
       <div class="mb-4">
         <img id="channelLogo" class="mx-auto mb-2" height="100" width="100" alt="Channel Logo"/>
       </div>
-      <!-- Video.js player -->
-      <video id="videoPlayer" class="video-js vjs-default-skin" controls preload="auto" width="640" height="360">
-        <source id="videoSource" src="" type="">
+      <!-- Video.js player مع إعدادات HLS -->
+      <video-js id="videoPlayer" class="video-js vjs-fluid vjs-big-play-centered" controls preload="auto">
+        <source id="videoSource" src="" type="application/x-mpegURL">
         Your browser does not support the video tag.
-      </video>
+      </video-js>
     </div>
   </div>
 
-  <!-- Video.js library -->
+  <!-- Video.js library + HLS integration -->
   <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
   <script>
-    // Initialize video.js player
-    let player = videojs('videoPlayer');
+    let player;
+    let hls;
 
-    // Determine MIME type based on file extension
-    function getVideoType(url) {
-      if (url.includes(".m3u8")) return "application/x-mpegURL";
-      else if (url.includes(".mp4")) return "video/mp4";
-      else if (url.includes(".webm")) return "video/webm";
-      return "";
+    // تهيئة المشغل مع دعم HLS
+    function initPlayer(url) {
+      if (videojs.getPlayer('videoPlayer')) {
+        player.dispose();
+      }
+      
+      player = videojs('videoPlayer', {
+        techOrder: ['html5', 'hls'],
+        hls: {
+          withCredentials: false
+        },
+        controls: true,
+        autoplay: true,
+        fluid: true
+      });
+
+      if (Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(player.tech().el());
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          player.play();
+        });
+      } else if (player.tech().el().canPlayType('application/vnd.apple.mpegurl')) {
+        player.src(url);
+        player.play();
+      }
     }
 
-    // Open video player using video.js with updated source
+    // فتح المشغل مع إعدادات HLS
     function openVideoPlayer(channel, url, logo) {
       document.getElementById('channelName').innerText = channel;
       document.getElementById('channelLogo').src = logo;
-      const type = getVideoType(url);
-      player.src({ src: url, type: type });
-      player.load();
       document.getElementById('videoPlayerModal').classList.remove('hidden');
-      player.play();
+      initPlayer(url);
     }
 
-    // Close the video player modal and pause the player
+    // إغلاق المشغل
     function closeVideoPlayer() {
       document.getElementById('videoPlayerModal').classList.add('hidden');
-      player.pause();
+      if (player) {
+        player.pause();
+        if (hls) {
+          hls.destroy();
+        }
+      }
     }
 
-    // Fetch channel data and generate channel buttons dynamically
+    // جلب بيانات القنوات وعرضها
     fetch("https://raw.githubusercontent.com/ghaith-99/ghaith-99/refs/heads/main/mytv.json")
       .then(response => response.text())
       .then(text => {
@@ -94,7 +124,7 @@
           throw new Error("Could not find the start of the array");
         }
         let jsonString = text.substring(jsonStart);
-        // Remove comments (content between /* and */)
+        // إزالة التعليقات (المحتوى بين /* و */)
         jsonString = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
         const data = JSON.parse(jsonString);
         console.log(data);
