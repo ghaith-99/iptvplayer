@@ -36,32 +36,16 @@
   <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
   <script>
     let player = null;
-    const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
     const CHANNELS_URL = 'https://raw.githubusercontent.com/ghaith-99/ghaith-99/main/mytv.json';
-
-    // دالة تنظيف JSON
-    function cleanJSON(jsonString) {
-      return jsonString
-        .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // إزالة أحرف التحكم
-        .replace(/\r?\n|\r/g, ' ') // استبدال الأسطر الجديدة بمسافات
-        .replace(/،/g, ',') // استبدال الفواصل العربية
-        .replace(/(\w)'(\w)/g, '$1"$2') // إصلاح التنصيص المفرد
-        .replace(/'/g, '"') // تحويل كل التنصيص المفرد إلى مزدوج
-        .replace(/,(\s*})/g, '$1'); // إزالة الفواصل الزائدة
-    }
 
     async function loadChannels() {
       try {
-        const response = await fetch(CORS_PROXY + encodeURIComponent(CHANNELS_URL));
-        if (!response.ok) throw new Error('فشل الاتصال بالخادم');
-        
-        const dirtyData = await response.text();
-        const cleanData = cleanJSON(dirtyData);
-        const channels = JSON.parse(cleanData);
-
+        const response = await fetch(CHANNELS_URL);
+        const channels = await response.json();
         renderChannels(channels);
+        document.getElementById('errorMessage').classList.add('hidden');
       } catch (error) {
-        showError(`خطأ في التحميل: ${error.message}`);
+        showError('حدث خطأ أثناء تحميل القنوات');
       }
     }
 
@@ -74,7 +58,6 @@
             <img src="${channel.logo}" class="w-12 h-12 rounded-full mr-4" alt="${channel.channel}">
             <div>
               <h3 class="font-bold">${channel.channel}</h3>
-              <p class="text-gray-400 text-sm">${channel.url}</p>
             </div>
           </div>
         </div>
@@ -95,11 +78,6 @@
           type: 'application/x-mpegURL'
         }]
       });
-
-      player.on('error', () => {
-        showError('تعذر تشغيل البث، جاري إعادة المحاولة...');
-        setTimeout(() => player.src({ src: streamUrl, type: 'application/x-mpegURL' }), 3000);
-      });
     }
 
     function closePlayer() {
@@ -109,10 +87,7 @@
 
     function showError(message) {
       const errorEl = document.getElementById('errorMessage');
-      errorEl.innerHTML = `${message} 
-        <button onclick="loadChannels()" class="mr-2 px-3 py-1 bg-blue-600 rounded">
-          إعادة المحاولة
-        </button>`;
+      errorEl.innerHTML = message;
       errorEl.classList.remove('hidden');
     }
 
